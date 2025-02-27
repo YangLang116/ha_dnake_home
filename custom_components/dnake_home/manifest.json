@@ -1,0 +1,16 @@
+{
+  "domain": "dnake_home",
+  "name": "Dnake Home",
+  "version": "0.1.0",
+  "codeowners": [
+    "@YangLang"
+  ],
+  "issue_tracker": "https://github.com/YangLang116/ha_dnake_home/issues",
+  "documentation": "https://github.com/YangLang116/ha_dnake_home/blob/main/README.md",
+  "config_flow": true,
+  "dependencies": [],
+  "requirements": [
+    "requests"
+  ],
+  "iot_class": "local_polling"
+}

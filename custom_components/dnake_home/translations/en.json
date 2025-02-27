@@ -1,0 +1,22 @@
+{
+    "config": {
+        "step": {
+            "user": {
+                "title": "Connect to Dnake Device",
+                "description": "Please enter your Dnake device connection details",
+                "data": {
+                    "gateway_ip": "Gateway IP Address",
+                    "auth_username": "Gateway Access Username",
+                    "auth_password": "Gateway Access Password",
+                    "scan_interval": "Status Refresh Interval (seconds)"
+                }
+            }
+        },
+        "error": {
+            "cannot_connect": "Failed to connect, please check your configuration"
+        },
+        "abort": {
+            "already_configured": "Device is already configured"
+        }
+    }
+} 

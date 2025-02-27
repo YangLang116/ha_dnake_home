@@ -1,0 +1,22 @@
+{
+    "config": {
+        "step": {
+            "user": {
+                "title": "连接到 Dnake 设备",
+                "description": "请输入 Dnake 设备的连接信息",
+                "data": {
+                    "gateway_ip": "网关IP地址",
+                    "auth_username": "网关用户名",
+                    "auth_password": "网关密码",
+                    "scan_interval": "状态刷新间隔（秒）"
+                }
+            }
+        },
+        "error": {
+            "cannot_connect": "连接失败，请检查配置"
+        },
+        "abort": {
+            "already_configured": "设备已经配置"
+        }
+    }
+} 
