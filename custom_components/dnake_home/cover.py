@@ -25,7 +25,6 @@ def update_covers_state(states):
         state = next((state for state in states if cover.is_hint_state(state)), None)
         if state:
             cover.update_state(state)
-            cover.async_write_ha_state()
 
 
 async def async_setup_entry(
@@ -121,7 +120,6 @@ class DnakeCover(CoverEntity):
             # 停止后，延迟获取level状态才准确
             async def _reload_cover(_):
                 await self._async_refresh_level()
-                self.async_write_ha_state()
 
             async_call_later(self.hass, timedelta(seconds=2), _reload_cover)
 
@@ -137,7 +135,6 @@ class DnakeCover(CoverEntity):
         await self._async_refresh_level(update_target_level=False)
         if self._current_level == self._target_level:
             self._stop_schedule_update()
-            self.async_write_ha_state()
 
     def _stop_schedule_update(self):
         if self._level_refresher_cancel:
@@ -157,3 +154,4 @@ class DnakeCover(CoverEntity):
         self._current_level = current_level
         if update_target_level:
             self._target_level = current_level
+        self.async_write_ha_state()

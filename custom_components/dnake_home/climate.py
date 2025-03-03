@@ -46,7 +46,6 @@ def update_climates_state(states):
         state = next((state for state in states if climate.is_hint_state(state)), None)
         if state:
             climate.update_state(state)
-            climate.async_write_ha_state()
 
 
 async def async_setup_entry(
@@ -147,6 +146,7 @@ class DnakeClimate(ClimateEntity):
         )
         if is_success:
             self._target_temperature = temperature
+            self.async_write_ha_state()
 
     async def async_set_hvac_mode(self, hvac_mode):
         if hvac_mode == HVACMode.OFF:
@@ -189,3 +189,4 @@ class DnakeClimate(ClimateEntity):
         else:
             mode = state.get("mode")
             self._hvac_mode = get_key_by_value(_hvac_table, mode, HVACMode.OFF)
+        self.async_write_ha_state()

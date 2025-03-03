@@ -24,7 +24,6 @@ def update_lights_state(states):
         state = next((state for state in states if light.is_hint_state(state)), None)
         if state:
             light.update_state(state)
-            light.async_write_ha_state()
 
 
 async def async_setup_entry(
@@ -87,6 +86,8 @@ class DnakeLight(LightEntity):
         )
         if is_success:
             self._is_on = is_on
+            self.async_write_ha_state()
 
     def update_state(self, state):
         self._is_on = state.get("state", 0) == 1
+        self.async_write_ha_state()
