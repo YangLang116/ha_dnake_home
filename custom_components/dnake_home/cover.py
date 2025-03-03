@@ -1,143 +1,159 @@
 import logging
-
-from homeassistant.components.cover import (
-    CoverEntity,
-    CoverEntityFeature
-)
-from homeassistant.config_entries import ConfigEntry
+from datetime import timedelta
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.config_entries import ConfigEntry
+from homeassistant.components.cover import CoverEntity, CoverEntityFeature
+from homeassistant.helpers.entity_platform import AddEntitiesCallback, async_call_later
+from homeassistant.helpers.event import async_track_time_interval
 
-from . import assistant
+from .core.assistant import assistant
 
 _LOGGER = logging.getLogger(__name__)
 
 
-def find_covers(device_list):
-    result = []
-    for device in device_list:
-        if device.get('ty') == 514:
-            result.append(DnakeCover(device))
-    return result
+def load_covers(device_list):
+    covers = [DnakeCover(device) for device in device_list if device.get("ty") == 514]
+    _LOGGER.info(f"find cover num: {len(covers)}")
+    assistant.entries["cover"] = covers
 
 
-def update_covers_state(cover_list, state_list):
-    for cover in cover_list:
-        for device_state in state_list:
-            if cover._dev_no == device_state.get("devNo") and cover._dev_ch == device_state.get("devCh"):
-                cover.set_state(device_state)
+def update_covers_state(states):
+    covers = assistant.entries["cover"]
+    for cover in covers:
+        if cover.is_opening or cover.is_closing:
+            return
+        state = next((state for state in states if cover.is_hint_state(state)), None)
+        if state:
+            cover.update_state(state)
+            cover.async_write_ha_state()
 
 
-async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback):
-    """Set up Dnake covers from a config entry."""
-    cover_list = entry.data['cover_list']
+async def async_setup_entry(
+    hass: HomeAssistant,
+    entry: ConfigEntry,
+    async_add_entities: AddEntitiesCallback,
+):
+    cover_list = assistant.entries["cover"]
     if cover_list:
         async_add_entities(cover_list)
 
 
 class DnakeCover(CoverEntity):
-    """Representation of a Dnake Cover with position control."""
 
     def __init__(self, device):
-        """Initialize the cover."""
-        self._device = device
         self._name = device.get("na")
-        self._current_level = device.get("level", 0)
-        self._is_closed = self._current_level == 0
-        self._is_opening = False
-        self._is_closing = False
         self._dev_no = device.get("nm")
         self._dev_ch = device.get("ch")
+        self._target_level = 0
+        self._current_level = 0
+        self._level_refresher_cancel = None
 
-    @property
-    def name(self):
-        """Return the display name of this cover."""
-        return self._name
+    def is_hint_state(self, state):
+        return state.get("devNo") == self._dev_no and state.get("devCh") == self._dev_ch
 
     @property
     def unique_id(self):
-        """Return a unique ID for this cover."""
         return f"dnake_{self._dev_ch}_{self._dev_no}"
 
     @property
+    def should_poll(self):
+        return False
+
+    @property
+    def name(self):
+        return self._name
+
+    @property
     def is_closed(self):
-        """Return true if the cover is closed."""
-        return self._is_closed
+        return self._current_level == 0
 
     @property
     def is_opening(self):
-        """Return true if the cover is opening."""
-        return self._is_opening
+        return self._target_level > self._current_level
 
     @property
     def is_closing(self):
-        """Return true if the cover is closing."""
-        return self._is_closing
+        return self._target_level < self._current_level
 
     @property
     def current_cover_position(self):
-        """Return the current position of the cover."""
-        return None if self._current_level is None else int((self._current_level / 254) * 100)
+        # 0 - 254 for dnake cover
+        return int((self._current_level / 254) * 100)
 
     @property
     def supported_features(self):
-        """Flag supported features."""
         return (
-                CoverEntityFeature.OPEN
-                | CoverEntityFeature.CLOSE
-                | CoverEntityFeature.STOP
-                | CoverEntityFeature.SET_POSITION
+            CoverEntityFeature.OPEN
+            | CoverEntityFeature.CLOSE
+            | CoverEntityFeature.STOP
+            | CoverEntityFeature.SET_POSITION
         )
 
-    def set_cover_position(self, **kwargs):
-        """Move the cover to a specific position."""
-        current_level = self.get_current_level()
-        position = kwargs.get("position", 0)  # Position is 0-100
-        level = int((position / 100) * 254)  # Convert to 0-254
-        level = max(0, min(254, level))  # Ensure level is within range
-        is_success = assistant.set_level(self._dev_no, self._dev_ch, level)
+    async def async_close_cover(self, **kwargs):
+        await self.async_set_cover_position(position=0)
+
+    async def async_open_cover(self, **kwargs):
+        await self.async_set_cover_position(position=100)
+
+    async def async_set_cover_position(self, **kwargs):
+        target_level = int((kwargs.get("position", 0) / 100) * 254)
+        is_success = await self.hass.async_add_executor_job(
+            assistant.set_level,
+            self._dev_no,
+            self._dev_ch,
+            target_level,
+        )
         if is_success:
-            self._current_level = level
-            self._is_opening = level > current_level
-            self._is_closing = level < current_level
-            self._is_closed = level == current_level
-            self.async_write_ha_state()
-
-    def open_cover(self, **kwargs):
-        """Open the cover."""
-        self.set_cover_position(position=100)
-
-    def close_cover(self, **kwargs):
-        """Close the cover."""
-        self.set_cover_position(position=0)
-
-    def stop_cover(self, **kwargs):
-        """Stop the cover."""
-        is_success = assistant.stop(self._dev_no, self._dev_ch)
-        if is_success:
-            current_level = self.get_current_level()
-            self._current_level = current_level
-            self._is_closed = current_level == 0
-            self._is_opening = False
-            self._is_closing = False
-            self.async_write_ha_state()
-
-    async def async_update(self):
-        current_level = self.get_current_level()
-        self._current_level = current_level
-        self._is_closed = current_level == 0
-        self._is_opening = False
-        self._is_closing = False
-
-    def get_current_level(self):
-        state = assistant.read_dev_state(self._dev_no, self._dev_ch)
-        if state and state.get('result') == 'ok':
-            return state.get('level', 0)
+            self._target_level = target_level
+            self._start_schedule_update()
         else:
-            return 0
+            _LOGGER.error("set cover position fail")
 
-    def set_state(self, device_state):
-        current_level = device_state.get("level", 0)
+    async def async_stop_cover(self, **kwargs):
+        is_success = await self.hass.async_add_executor_job(
+            assistant.stop,
+            self._dev_no,
+            self._dev_ch,
+        )
+        if is_success:
+            self._stop_schedule_update()
+
+            # 停止后，延迟获取level状态才准确
+            async def _reload_cover(_):
+                await self._async_refresh_level()
+                self.async_write_ha_state()
+
+            async_call_later(self.hass, timedelta(seconds=2), _reload_cover)
+
+    def _start_schedule_update(self):
+        self._stop_schedule_update()
+        self._level_refresher_cancel = async_track_time_interval(
+            self.hass,
+            self._do_schedule_update,
+            timedelta(milliseconds=500),
+        )
+
+    async def _do_schedule_update(self, now=None):
+        await self._async_refresh_level(update_target_level=False)
+        if self._current_level == self._target_level:
+            self._stop_schedule_update()
+            self.async_write_ha_state()
+
+    def _stop_schedule_update(self):
+        if self._level_refresher_cancel:
+            self._level_refresher_cancel()
+
+    async def _async_refresh_level(self, update_target_level=True):
+        state = await self.hass.async_add_executor_job(
+            assistant.read_dev_state,
+            self._dev_no,
+            self._dev_ch,
+        )
+        if state and state.get("result") == "ok":
+            self.update_state(state, update_target_level=update_target_level)
+
+    def update_state(self, state, update_target_level=True):
+        current_level = state.get("level", 0)
         self._current_level = current_level
-        self._is_closed = current_level == 0
-        self.async_write_ha_state()
+        if update_target_level:
+            self._target_level = current_level

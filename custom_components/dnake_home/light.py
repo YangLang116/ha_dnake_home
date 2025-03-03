@@ -1,98 +1,92 @@
 import logging
-
+from homeassistant.core import HomeAssistant
+from homeassistant.config_entries import ConfigEntry
+from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.components.light import (
     LightEntity,
     ColorMode,
 )
-from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant
-from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from .core.assistant import assistant
 
-from . import assistant
 
 _LOGGER = logging.getLogger(__name__)
 
 
-def find_lights(device_list):
-    result = []
-    for device in device_list:
-        if device.get('ty') == 256:
-            result.append(DnakeLight(device))
-    return result
+def load_lights(device_list):
+    lights = [DnakeLight(device) for device in device_list if device.get("ty") == 256]
+    _LOGGER.info(f"find light num: {len(lights)}")
+    assistant.entries["light"] = lights
 
 
-def update_lights_state(light_list, state_list):
-    for light in light_list:
-        for device_state in state_list:
-            if light._dev_no == device_state.get("devNo") and light._dev_ch == device_state.get("devCh"):
-                light.set_state(device_state)
+def update_lights_state(states):
+    lights = assistant.entries["light"]
+    for light in lights:
+        state = next((state for state in states if light.is_hint_state(state)), None)
+        if state:
+            light.update_state(state)
+            light.async_write_ha_state()
 
 
-async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback):
-    """Set up Dnake lights from a config entry."""
-    light_list = entry.data['light_list']
+async def async_setup_entry(
+    hass: HomeAssistant,
+    entry: ConfigEntry,
+    async_add_entities: AddEntitiesCallback,
+):
+    light_list = assistant.entries["light"]
     if light_list:
         async_add_entities(light_list)
 
 
 class DnakeLight(LightEntity):
-    """Representation of a Dnake Light."""
 
     def __init__(self, device):
-        """Initialize the light."""
-        self._device = device
         self._name = device.get("na")
-        self._is_on = device.get("state") == 1
-        self._attr_supported_color_modes = {ColorMode.ONOFF}
-        self._attr_color_mode = ColorMode.ONOFF
         self._dev_no = device.get("nm")
         self._dev_ch = device.get("ch")
+        self._is_on = False
 
-    @property
-    def name(self):
-        """Return the display name of this light."""
-        return self._name
+    def is_hint_state(self, state):
+        return state.get("devNo") == self._dev_no and state.get("devCh") == self._dev_ch
 
     @property
     def unique_id(self):
-        """Return a unique ID for this light."""
         return f"dnake_{self._dev_ch}_{self._dev_no}"
 
     @property
+    def should_poll(self):
+        return False
+
+    @property
+    def name(self):
+        return self._name
+
+    @property
     def is_on(self):
-        """Return true if light is on."""
         return self._is_on
 
     @property
-    def supported_color_modes(self):
-        """Return supported color modes."""
-        return self._attr_supported_color_modes
+    def color_mode(self):
+        return ColorMode.ONOFF
 
     @property
-    def color_mode(self):
-        """Return the current color mode."""
-        return self._attr_color_mode
+    def supported_color_modes(self):
+        return {ColorMode.ONOFF}
 
-    def turn_on(self, **kwargs):
-        """Instruct the light to turn on."""
-        is_success = assistant.switch(self._dev_no, self._dev_ch, True)
+    async def async_turn_on(self, **kwargs):
+        await self._turn_to(True)
+
+    async def async_turn_off(self, **kwargs):
+        await self._turn_to(False)
+
+    async def _turn_to(self, is_on):
+        is_success = await self.hass.async_add_executor_job(
+            assistant.turnTo,
+            self._dev_no,
+            self._dev_ch,
+            is_on,
+        )
         if is_success:
-            self._is_on = True
-            self.async_write_ha_state()
+            self._is_on = is_on
 
-    def turn_off(self, **kwargs):
-        """Instruct the light to turn off."""
-        is_success = assistant.switch(self._dev_no, self._dev_ch, False)
-        if is_success:
-            self._is_on = False
-            self.async_write_ha_state()
-
-    async def async_update(self):
-        """Fetch new state data for this light."""
-        state = assistant.read_dev_state(self._dev_no, self._dev_ch)
-        if state and state['result'] == 'ok':
-            self.set_state(state)
-
-    def set_state(self, device_state):
-        self._is_on = device_state.get("state") == 1
-        self.async_write_ha_state()
+    def update_state(self, state):
+        self._is_on = state.get("state", 0) == 1
