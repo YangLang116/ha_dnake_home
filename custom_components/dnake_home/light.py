@@ -79,7 +79,7 @@ class DnakeLight(LightEntity):
 
     async def _turn_to(self, is_on):
         is_success = await self.hass.async_add_executor_job(
-            assistant.turnTo,
+            assistant.turn_to,
             self._dev_no,
             self._dev_ch,
             is_on,

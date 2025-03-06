@@ -25,10 +25,10 @@ class __AssistantCore:
         self.to_device = gw_iot_name
         _LOGGER.info(f"bind iot info: from={self.from_device},to={self.to_device}")
 
-    def __get_url(self, path):
+    def _get_url(self, path):
         return f"http://{self.gw_ip}{path}"
 
-    def __get_header(self):
+    def _get_header(self):
         return {
             "Accept": "application/json",
             "Content-Type": "application/json",
@@ -37,8 +37,8 @@ class __AssistantCore:
 
     def get(self, path):
         try:
-            url = self.__get_url(path)
-            resp = requests.get(url, headers=self.__get_header())
+            url = self._get_url(path)
+            resp = requests.get(url, headers=self._get_header())
             resp.raise_for_status()
             return resp.json()
         except requests.exceptions.RequestException as e:
@@ -47,11 +47,11 @@ class __AssistantCore:
 
     def post(self, data: dict):
         try:
-            url = self.__get_url("/route.cgi?api=request")
+            url = self._get_url("/route.cgi?api=request")
             data["uuid"] = get_uuid()
             resp = requests.post(
                 url,
-                headers=self.__get_header(),
+                headers=self._get_header(),
                 json={
                     "fromDev": self.from_device,
                     "toDev": self.to_device,
@@ -113,7 +113,7 @@ class Assistant(__AssistantCore):
             _LOGGER.error("query all device status fail")
             return None
 
-    def turnTo(self, dev_no, dev_ch, is_open: bool):
+    def turn_to(self, dev_no, dev_ch, is_open: bool):
         cmd = Cmd.On if is_open else Cmd.Off
         return self.do_action(
             {
