@@ -4,6 +4,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import UnitOfTemperature
 from homeassistant.components.climate import ClimateEntity
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.components.climate.const import (
     FAN_LOW,
     FAN_MIDDLE,
@@ -14,6 +15,7 @@ from homeassistant.components.climate.const import (
 
 from .core.assistant import assistant
 from .core.utils import get_key_by_value
+from .core.constant import DOMAIN, MANUFACTURER
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -75,6 +77,16 @@ class DnakeClimate(ClimateEntity):
     @property
     def unique_id(self):
         return f"dnake_{self._dev_ch}_{self._dev_no}"
+
+    @property
+    def device_info(self):
+        return DeviceInfo(
+            identifiers={(DOMAIN, f"climate_{self._dev_ch}_{self._dev_no}")},
+            name=self._name,
+            manufacturer=MANUFACTURER,
+            model="空调控制",
+            via_device=(DOMAIN, "gateway"),
+        )
 
     @property
     def should_poll(self):

@@ -1,5 +1,9 @@
 from enum import Enum
 
+TITLE = "Dnake Home"
+DOMAIN = "dnake_home"
+MANUFACTURER = "Dnake"
+
 
 class Action(Enum):
     # 获取单设备状态

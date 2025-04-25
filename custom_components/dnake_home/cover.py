@@ -5,8 +5,10 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.components.cover import CoverEntity, CoverEntityFeature
 from homeassistant.helpers.entity_platform import AddEntitiesCallback, async_call_later
 from homeassistant.helpers.event import async_track_time_interval
+from homeassistant.helpers.entity import DeviceInfo
 
 from .core.assistant import assistant
+from .core.constant import DOMAIN, MANUFACTURER
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -53,6 +55,16 @@ class DnakeCover(CoverEntity):
     @property
     def unique_id(self):
         return f"dnake_{self._dev_ch}_{self._dev_no}"
+
+    @property
+    def device_info(self):
+        return DeviceInfo(
+            identifiers={(DOMAIN, f"cover_{self._dev_ch}_{self._dev_no}")},
+            name=self._name,
+            manufacturer=MANUFACTURER,
+            model="窗帘控制",
+            via_device=(DOMAIN, "gateway"),
+        )
 
     @property
     def should_poll(self):

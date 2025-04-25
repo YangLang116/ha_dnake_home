@@ -1,13 +1,15 @@
 import voluptuous as vol
 from homeassistant import config_entries
 
+from .core.constant import DOMAIN, TITLE
 
-class DNakeConfigFlow(config_entries.ConfigFlow, domain="dnake_home"):
+
+class DNakeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     VERSION = 1
 
     async def async_step_user(self, user_input=None):
         if user_input:
-            return self.async_create_entry(title="Dnake Home", data=user_input)
+            return self.async_create_entry(title=TITLE, data=user_input)
         else:
             default_values = {
                 "gateway_ip": "192.168.1.2",

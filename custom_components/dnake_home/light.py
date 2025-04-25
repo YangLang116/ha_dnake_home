@@ -6,7 +6,9 @@ from homeassistant.components.light import (
     LightEntity,
     ColorMode,
 )
+from homeassistant.helpers.entity import DeviceInfo
 from .core.assistant import assistant
+from .core.constant import DOMAIN, MANUFACTURER
 
 
 _LOGGER = logging.getLogger(__name__)
@@ -50,6 +52,16 @@ class DnakeLight(LightEntity):
     @property
     def unique_id(self):
         return f"dnake_{self._dev_ch}_{self._dev_no}"
+
+    @property
+    def device_info(self):
+        return DeviceInfo(
+            identifiers={(DOMAIN, f"light_{self._dev_ch}_{self._dev_no}")},
+            name=self._name,
+            manufacturer=MANUFACTURER,
+            model="灯光控制",
+            via_device=(DOMAIN, "gateway"),
+        )
 
     @property
     def should_poll(self):
