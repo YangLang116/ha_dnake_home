@@ -1,3 +1,5 @@
 .idea
 .venv
-**/__pycache__/
+.DS_Store
+__pycache__/
+/docs/example.txt

@@ -1,4 +1,5 @@
 import logging
+
 import requests
 
 from .constant import Action, Cmd, Power
@@ -200,6 +201,66 @@ class Assistant(__AssistantCore):
                 "cmd": Cmd.AirCondition.value,
                 "oper": "setSwing",
                 "param": mode,
+                "devNo": dev_no,
+                "devCh": dev_ch,
+            }
+        )
+
+    def set_air_heater_power(self, dev_no, dev_ch, is_open: bool):
+        power = Power.On if is_open else Power.Off
+        return self.do_action(
+            {
+                "action": Action.CtrlDev.value,
+                "cmd": Cmd.AirHeater.value,
+                "oper": power.value,
+                "devNo": dev_no,
+                "devCh": dev_ch,
+            }
+        )
+
+    def set_air_heater_mode(self, dev_no, dev_ch, mode: int):
+        return self.do_action(
+            {
+                "action": Action.CtrlDev.value,
+                "cmd": Cmd.AirHeater.value,
+                "oper": "setMode",
+                "param": mode,
+                "devNo": dev_no,
+                "devCh": dev_ch,
+            }
+        )
+
+    def set_air_heater_temperature(self, dev_no, dev_ch, temp: int):
+        return self.do_action(
+            {
+                "action": Action.CtrlDev.value,
+                "cmd": Cmd.AirHeater.value,
+                "oper": "setTemp",
+                "param": temp,
+                "devNo": dev_no,
+                "devCh": dev_ch,
+            }
+        )
+
+    def set_fresh_air_power(self, dev_no, dev_ch, is_open: bool):
+        power = Power.On if is_open else Power.Off
+        return self.do_action(
+            {
+                "action": Action.CtrlDev.value,
+                "cmd": Cmd.AirFresh.value,
+                "oper": power.value,
+                "devNo": dev_no,
+                "devCh": dev_ch,
+            }
+        )
+
+    def set_fresh_air_speed(self, dev_no, dev_ch, speed: int):
+        return self.do_action(
+            {
+                "action": Action.CtrlDev.value,
+                "cmd": Cmd.AirFresh.value,
+                "oper": "setFlow",
+                "param": speed,
                 "devNo": dev_no,
                 "devCh": dev_ch,
             }

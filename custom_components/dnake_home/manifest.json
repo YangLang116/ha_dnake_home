@@ -1,7 +1,7 @@
 {
   "domain": "dnake_home",
   "name": "Dnake Home",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "codeowners": [
     "@YangLang"
   ],
