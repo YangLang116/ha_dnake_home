@@ -1,0 +1,4 @@
+interface:
+  display_name: "狄耐克智能家居控制"
+  short_description: "通过本地网关 API 控制狄耐克智能家居设备。"
+  default_prompt: "使用 $dnake-home-skill 查询和控制本地网关下的灯、窗帘、空调、地暖、新风和传感器。"
